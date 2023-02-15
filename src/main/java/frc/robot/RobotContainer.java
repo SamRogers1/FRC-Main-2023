@@ -10,6 +10,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.PrintCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import frc.robot.subsystems.Drivetrain;
 import frc.robot.subsystems.gyro.Balance;
 import frc.robot.subsystems.gyro.Gyro;
@@ -42,6 +43,8 @@ public class RobotContainer {
     },
     drivetrain));
     driverController.whenPressed(XboxController.Button.X, new Balance(gyro, 0, drivetrain));
+    //driverController.whenPressed(XboxController.Button.Y, new InstantCommand(gyro::calibrateGyro));
+    //driverController.whenPressed(XboxController.Button.A, new InstantCommand(gyro::zeroGyro));
   }
 
   public Command getAutonomousCommand(){

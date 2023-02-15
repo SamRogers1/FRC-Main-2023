@@ -7,10 +7,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class Gyro extends SubsystemBase {
-    private AHRS _gyro = new AHRS(SPI.Port.kMXP);
-    
-        
-        
+    private AHRS gyro = new AHRS(SPI.Port.kMXP);
     double rollOffset;
     boolean initialized;
 
@@ -18,20 +15,63 @@ public class Gyro extends SubsystemBase {
         this.rollOffset = 0;
         this.initialized = false;
         
-        _gyro.calibrate();
-
+        gyro.calibrate();
+        
         SmartDashboard.putNumber("gyro offset", this.rollOffset);
     }
 
     public double getRoll(){
-        return _gyro.getRoll() - this.rollOffset;
+        return gyro.getRoll() - this.rollOffset;
     }
 
     @Override
     public void periodic(){
-        if (! this.initialized && _gyro.getRoll() != 0){
-            this.rollOffset = _gyro.getRoll();
+        if (! this.initialized && gyro.getRoll() != 0){
+            this.rollOffset = gyro.getRoll();
             this.initialized = true;
         }
+        SmartDashboard.putNumber("Roll",getRoll());
     }
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
+    /*  public Gyro(){
+    calibrateGyro();
+    zeroGyro();
+    }
+    public void calibrateGyro() {
+        gyro.calibrate();
+      }
+      public void zeroGyro() {
+        gyro.reset();
+      
+    }
+      public double getYaw() {
+        return gyro.getYaw();
+      }
+      public double getPitch() {
+        return gyro.getPitch();
+      }
+      public double getRoll() {
+        return gyro.getRoll();
+      }
+       @Override
+      public void periodic(){    
+      SmartDashboard.putNumber("Yaw", getYaw());
+      SmartDashboard.putNumber("Roll",getRoll());
+      SmartDashboard.putNumber("Pitch", getPitch());
+      
+    } */
 }

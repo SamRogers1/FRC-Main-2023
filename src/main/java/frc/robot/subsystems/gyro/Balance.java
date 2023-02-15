@@ -11,21 +11,18 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.BalanceConstants;
 import frc.robot.subsystems.Drivetrain;
 //import frc.robot.util.XboxController;
+import frc.robot.subsystems.gyro.Gyro;
+
 
 public class Balance extends PIDCommand{
     
-    private AHRS gyro;
+    
     private Drivetrain drivetrain;//replace with actual drivetrain
     
     Gyro gyro;
   
 
-    public double gyroPitch()
-    {
-        //gets the angle of the robot throughout auto
-        double pitch = gyro.getRoll();
-        return pitch;
-    }
+    
 
 
     public Balance(Gyro gyro, double setpoint, Drivetrain drivetrain) {
@@ -37,7 +34,7 @@ public class Balance extends PIDCommand{
             // Pipe output to turn robot
             (outputPower) -> {
                 SmartDashboard.putNumber("Angular Output", outputPower);
-                drivetrain.arcadeDrive(0, -outputPower);
+                drivetrain.arcadeDrive(outputPower, 0);
             },
             drivetrain
         );
