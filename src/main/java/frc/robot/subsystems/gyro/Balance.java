@@ -11,7 +11,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.BalanceConstants;
 import frc.robot.subsystems.Drivetrain;
 //import frc.robot.util.XboxController;
-import frc.robot.subsystems.gyro.Gyro;
+//import frc.robot.subsystems.gyro.Gyro;
 
 
 public class Balance extends PIDCommand{
@@ -34,12 +34,10 @@ public class Balance extends PIDCommand{
             // Pipe output to turn robot
             (outputPower) -> {
                 SmartDashboard.putNumber("Angular Output", outputPower);
-                drivetrain.arcadeDrive(outputPower, 0);
+                drivetrain.dummyDrive(-outputPower);
             },
             drivetrain
         );
-
-        SmartDashboard.putNumber("kP", SmartDashboard.getNumber("kP", 0));
 
     
         this.getController().setTolerance(BalanceConstants.kErrorThreshold);
@@ -49,12 +47,15 @@ public class Balance extends PIDCommand{
         this.gyro = gyro;
         this.drivetrain = drivetrain;
     
-        addRequirements(drivetrain);
+        // addRequirements(drivetrain);
     }
 
     @Override
     public void execute(){
+        double output = this.m_controller.calculate(this.m_measurement.getAsDouble(), this.m_setpoint.getAsDouble());
+        SmartDashboard.putNumber("pid output", output);
         this.m_controller.setP(SmartDashboard.getNumber("kP", 0));
+        this.m_useOutput.accept(output);
     }
 
 
@@ -63,6 +64,7 @@ public class Balance extends PIDCommand{
     public void end(boolean interrupted){
         SmartDashboard.putBoolean("Balance Running", false);
         drivetrain.arcadeDrive(0, 0);
+        drivetrain.setBrake();
     }
 
     @Override

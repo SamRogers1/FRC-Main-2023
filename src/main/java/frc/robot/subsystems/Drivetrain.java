@@ -4,6 +4,7 @@ import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel;
 //import com.revrobotics.RelativeEncoder;
 //import com.revrobotics.CANSparkMax.IdleMode;
+import com.revrobotics.CANSparkMax.IdleMode;
 
 import frc.robot.util.XboxController;
 import edu.wpi.first.math.filter.SlewRateLimiter;
@@ -35,11 +36,33 @@ public class Drivetrain extends SubsystemBase{
         rightMotor1.setInverted(true);
         rightMotor2.setInverted(true);
         rightMotor3.setInverted(true);
+
+        leftMotor1.setInverted(false);
+        leftMotor2.setInverted(false);
+        leftMotor3.setInverted(false);
+    }
+
+    public void dummyDrive(double power){
+        rightMotor1.set(power);
+        rightMotor2.set(power);
+        rightMotor3.set(power);
+        leftMotor1.set(power);
+        leftMotor2.set(power);
+        leftMotor3.set(power);
     }
 
     public void arcadeDrive(double throttle, double turn) {
         drive.arcadeDrive(-throttleLimit.calculate(throttle), turnLimit.calculate(turn));
     }
-
+    public void setBrake(){
+        rightMotor1.setIdleMode(IdleMode.kBrake);
+        rightMotor2.setIdleMode(IdleMode.kBrake);
+        rightMotor3.setIdleMode(IdleMode.kBrake);
+        leftMotor1.setIdleMode(IdleMode.kBrake);
+        leftMotor2.setIdleMode(IdleMode.kBrake);
+        leftMotor3.setIdleMode(IdleMode.kBrake);
     }
+
+
+ }
     

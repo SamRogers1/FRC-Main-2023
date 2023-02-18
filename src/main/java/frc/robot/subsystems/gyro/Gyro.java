@@ -10,7 +10,13 @@ public class Gyro extends SubsystemBase {
     private AHRS gyro = new AHRS(SPI.Port.kMXP);
     double rollOffset;
     boolean initialized;
-
+    public double getYaw() {
+      return gyro.getYaw();
+    }
+    public double getPitch() {
+      return gyro.getPitch();
+    }
+    
     public Gyro(){
         this.rollOffset = 0;
         this.initialized = false;
@@ -31,7 +37,10 @@ public class Gyro extends SubsystemBase {
             this.initialized = true;
         }
         SmartDashboard.putNumber("Roll",getRoll());
-    }
+        
+    
+    
+      }
    
    
    

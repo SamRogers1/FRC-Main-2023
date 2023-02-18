@@ -10,7 +10,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.PrintCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
+//import edu.wpi.first.wpilibj2.command.InstantCommand;
 import frc.robot.subsystems.Drivetrain;
 import frc.robot.subsystems.gyro.Balance;
 import frc.robot.subsystems.gyro.Gyro;
@@ -35,11 +35,15 @@ public class RobotContainer {
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
     // Configure the button bindings
+
+    SmartDashboard.putNumber("kP", 0);
     
     this.drivetrain.setDefaultCommand(new RunCommand(() -> {
-    SmartDashboard.putNumber("gyro", gyro.getRoll());
-
-      this.drivetrain.arcadeDrive(driverController.getAxisValue(XboxController.Axis.RIGHT_X), driverController.getAxisValue(XboxController.Axis.LEFT_Y));
+    
+    SmartDashboard.putNumber("gyro pitch", gyro.getPitch());
+    SmartDashboard.putNumber("gyro yaw", gyro.getYaw());
+    
+      this.drivetrain.arcadeDrive(driverController.getAxisValue(XboxController.Axis.LEFT_Y), driverController.getAxisValue(XboxController.Axis.RIGHT_X));
     },
     drivetrain));
     driverController.whenPressed(XboxController.Button.X, new Balance(gyro, 0, drivetrain));
