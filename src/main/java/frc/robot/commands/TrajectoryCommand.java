@@ -8,21 +8,23 @@ package frc.robot.commands;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.RamseteController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.DifferentialDriveWheelSpeeds;
 import edu.wpi.first.math.trajectory.Trajectory;
+import edu.wpi.first.math.trajectory.TrajectoryUtil;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.CommandBase;
 import frc.robot.Constants;
 import frc.robot.subsystems.drivetrain.Drivetrain;
 import frc.robot.util.MotionProfileUtils;
 import org.bananasamirite.robotmotionprofile.TankMotionProfile;
 
-
 /** An example command that uses an example subsystem. */
-public class MotionProfileCommand extends CommandBase
+public class TrajectoryCommand extends CommandBase
 {
     @SuppressWarnings({"PMD.UnusedPrivateField", "PMD.SingularField"})
     private final Drivetrain subsystem;
@@ -30,7 +32,7 @@ public class MotionProfileCommand extends CommandBase
 
     private final Timer timer;
 
-    private final TankMotionProfile motionProfile;
+    private final Trajectory trajectory;
     private final double maxTime;
 
     private double startTime;
@@ -48,17 +50,17 @@ public class MotionProfileCommand extends CommandBase
     /**
      * Creates a new ExampleCommand.
      *
-     * @param subsystem The subsystem used by this command.
+     * @param drivetrain The subsystem used by this command.
      */
-    public MotionProfileCommand(Drivetrain subsystem, TankMotionProfile motionProfile)
+    public TrajectoryCommand(Drivetrain drivetrain, Trajectory trajectory)
     {
-        this.subsystem = subsystem;
+        this.subsystem = drivetrain;
         this.timer = new Timer();
         // Use addRequirements() here to declare subsystem dependencies.
-        addRequirements(subsystem);
+        addRequirements(drivetrain);
 
-        this.motionProfile = motionProfile;
-        this.maxTime = motionProfile.getTotalTime();
+        this.trajectory = trajectory;
+        this.maxTime = trajectory.getTotalTimeSeconds();
 
         this.ramseteController = new RamseteController();
 
@@ -70,8 +72,9 @@ public class MotionProfileCommand extends CommandBase
         NetworkTableInstance inst = NetworkTableInstance.getDefault();
         this.velocity = inst.getEntry("velocity");
         this.robotVelocity = inst.getEntry("robotVelocity");
-    }
 
+        subsystem.getField().getObject("robot").setTrajectory(trajectory);
+    }
 
     // Called when the command is initially scheduled.
     @Override
@@ -80,18 +83,20 @@ public class MotionProfileCommand extends CommandBase
         timer.reset();
         timer.start();
 
-        Trajectory.State initialState = MotionProfileUtils.profileStateToTrajectoryState(this.motionProfile.getStateAtTime(0));
-        prevSpeeds =
-                Constants.Trajectory.kDriveKinematics.toWheelSpeeds(
-                        new ChassisSpeeds(
-                                initialState.velocityMetersPerSecond,
-                                0,
-                                initialState.curvatureRadPerMeter * initialState.velocityMetersPerSecond
-                        ));
+        Trajectory.State initialState = this.trajectory.sample(0);
+        
+        prevSpeeds = Constants.Trajectory.kDriveKinematics.toWheelSpeeds(
+                new ChassisSpeeds(
+                        initialState.velocityMetersPerSecond,
+                        0,
+                        initialState.curvatureRadPerMeter * initialState.velocityMetersPerSecond
+                )
+        );
 
         subsystem.resetOdometry(initialState.poseMeters);
-    }
 
+        System.out.println("starting motion profile");
+    }
 
     // Called every time the scheduler runs while the command is scheduled.
     @Override
@@ -99,10 +104,19 @@ public class MotionProfileCommand extends CommandBase
         double curTime = timer.get();
 
         double dt = curTime - prevTime;
-        Trajectory.State state = MotionProfileUtils.profileStateToTrajectoryState(this.motionProfile.getStateAtTime(curTime));
+
+        Trajectory.State state = this.trajectory.sample(curTime);
 
         this.velocity.setDouble(state.velocityMetersPerSecond);
         this.robotVelocity.setDouble(Constants.Trajectory.kDriveKinematics.toChassisSpeeds(subsystem.getWheelSpeeds()).vxMetersPerSecond);
+        Pose2d robotPose = subsystem.getPose(); 
+
+        SmartDashboard.putNumber("expectedX", state.poseMeters.getX()); 
+        SmartDashboard.putNumber("robotX", robotPose.getX()); 
+        SmartDashboard.putNumber("expectedY", state.poseMeters.getY()); 
+        SmartDashboard.putNumber("robotY", robotPose.getY()); 
+        SmartDashboard.putNumber("expectedTheta", state.poseMeters.getRotation().getDegrees()); 
+        SmartDashboard.putNumber("robotTheta", robotPose.getRotation().getDegrees()); 
 
         if (prevTime < 0) {
             subsystem.tankDriveVolts(0, 0);
@@ -110,31 +124,19 @@ public class MotionProfileCommand extends CommandBase
             return;
         }
 
-        ChassisSpeeds speeds = ramseteController.calculate(
-                subsystem.getPose()
-                , state);
+        ChassisSpeeds speeds = ramseteController.calculate(subsystem.getPose(), state);
+
         DifferentialDriveWheelSpeeds wheelSpeeds = Constants.Trajectory.kDriveKinematics.toWheelSpeeds(speeds);
 
 
-        var leftSpeedSetpoint = wheelSpeeds.leftMetersPerSecond;
-        var rightSpeedSetpoint = wheelSpeeds.rightMetersPerSecond;
+        double leftSpeedSetpoint = wheelSpeeds.leftMetersPerSecond;
+        double rightSpeedSetpoint = wheelSpeeds.rightMetersPerSecond;
 
-        double leftFeedforward =
-                feedforward.calculate(
-                        leftSpeedSetpoint, (leftSpeedSetpoint - prevSpeeds.leftMetersPerSecond) / dt);
+        double leftFeedforward = feedforward.calculate(leftSpeedSetpoint, (leftSpeedSetpoint - prevSpeeds.leftMetersPerSecond) / dt);
+        double rightFeedforward = feedforward.calculate(rightSpeedSetpoint, (rightSpeedSetpoint - prevSpeeds.rightMetersPerSecond) / dt);
 
-        double rightFeedforward =
-                feedforward.calculate(
-                        rightSpeedSetpoint, (rightSpeedSetpoint - prevSpeeds.rightMetersPerSecond) / dt);
-
-        double leftOutput =
-                leftFeedforward
-                        + ctrlLeft.calculate(subsystem.getWheelSpeeds().leftMetersPerSecond, leftSpeedSetpoint);
-
-        double rightOutput =
-                rightFeedforward
-                        + ctrlRight.calculate(
-                        subsystem.getWheelSpeeds().rightMetersPerSecond, rightSpeedSetpoint);
+        double leftOutput = leftFeedforward + ctrlLeft.calculate(subsystem.getWheelSpeeds().leftMetersPerSecond, leftSpeedSetpoint);
+        double rightOutput = rightFeedforward + ctrlRight.calculate(subsystem.getWheelSpeeds().rightMetersPerSecond, rightSpeedSetpoint);
 
         this.subsystem.tankDriveVolts(leftOutput, rightOutput);
 
@@ -142,11 +144,9 @@ public class MotionProfileCommand extends CommandBase
         prevTime = curTime;
     }
 
-
     // Called once the command ends or is interrupted.
     @Override
     public void end(boolean interrupted) {}
-
 
     // Returns true when the command should end.
     @Override

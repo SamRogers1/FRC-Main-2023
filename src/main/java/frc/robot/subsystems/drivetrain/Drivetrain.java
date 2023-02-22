@@ -13,9 +13,10 @@ import edu.wpi.first.math.kinematics.DifferentialDriveWheelSpeeds;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
-import frc.robot.util.XboxController;
+import frc.robot.util.Encoder;
 import edu.wpi.first.wpilibj.SPI;
 
 public class Drivetrain extends SubsystemBase {
@@ -40,17 +41,17 @@ public class Drivetrain extends SubsystemBase {
     private final DifferentialDriveOdometry odometry;
 
     // reverse the encoders to match the reversed motors of the right side.
-    private final RelativeEncoder rightEncoder = rightMotor1.getEncoder();
-    private final RelativeEncoder leftEncoder = leftMotor1.getEncoder();
+    private final Encoder rightEncoder = new Encoder(rightMotor1.getEncoder());
+    private final Encoder leftEncoder = new Encoder(leftMotor1.getEncoder());
 
     private final AHRS gyro = new AHRS(SPI.Port.kMXP);
 
     private final Field2d m_field = new Field2d();
 
-    private final SlewRateLimiter throttleFilter = new SlewRateLimiter(Constants.kThrottleFilter);
-    private final SlewRateLimiter turnFilter = new SlewRateLimiter(Constants.kTurnFilter);
+    private final SlewRateLimiter throttleFilter = new SlewRateLimiter(Constants.Drivetrain.kThrottleFilter);
+    private final SlewRateLimiter turnFilter = new SlewRateLimiter(Constants.Drivetrain.kTurnFilter);
 
-    public Drivetrain(XboxController driverController){
+    public Drivetrain(){
         rightMotor1.setInverted(true);
         rightMotor2.setInverted(true);
         rightMotor3.setInverted(true);
@@ -67,9 +68,21 @@ public class Drivetrain extends SubsystemBase {
         rightMotor2.setIdleMode(IdleMode.kBrake);
         rightMotor3.setIdleMode(IdleMode.kBrake);
 
+
+        // TODO: increase & decrease max throttle this so turning doesnt get stuck
+        leftMotor1.setSmartCurrentLimit(Constants.Drivetrain.kMaxAmps);
+        leftMotor2.setSmartCurrentLimit(Constants.Drivetrain.kMaxAmps);
+        leftMotor3.setSmartCurrentLimit(Constants.Drivetrain.kMaxAmps);
+        rightMotor1.setSmartCurrentLimit(Constants.Drivetrain.kMaxAmps);
+        rightMotor2.setSmartCurrentLimit(Constants.Drivetrain.kMaxAmps);
+        rightMotor3.setSmartCurrentLimit(Constants.Drivetrain.kMaxAmps);
+
         // Sets the distance per pulse to the pre-defined constant we calculated for both encoders.
-        rightEncoder.setPositionConversionFactor(Constants.Drivetrain.kDistPerRot);
-        leftEncoder.setPositionConversionFactor(Constants.Drivetrain.kDistPerRot);
+        rightEncoder.getEncoder().setPositionConversionFactor(Constants.Trajectory.kMetersPerRot);
+        leftEncoder.getEncoder().setPositionConversionFactor(Constants.Trajectory.kMetersPerRot);
+
+        leftEncoder.getEncoder().setVelocityConversionFactor(Constants.Trajectory.kMetersPerSecondPerRPM);
+        rightEncoder.getEncoder().setVelocityConversionFactor(Constants.Trajectory.kMetersPerSecondPerRPM);
 
         resetEncoders();
 
@@ -78,15 +91,17 @@ public class Drivetrain extends SubsystemBase {
         //initDefaultCommand(driverController);
     }
 
-    private void initDefaultCommand(XboxController driverController){
-        // setDefaultCommand(new TeleopDrive(this, driverController));
-    }
-
     // Constantly updates the odometry of the robot with the rotation and the distance traveled.
     @Override
     public void periodic() {
         odometry.update(gyro.getRotation2d(), leftEncoder.getPosition(), rightEncoder.getPosition());
         m_field.setRobotPose(odometry.getPoseMeters());
+        SmartDashboard.putData("field", m_field);
+        SmartDashboard.putNumber("x", odometry.getPoseMeters().getX());
+        SmartDashboard.putNumber("y", odometry.getPoseMeters().getY());
+        SmartDashboard.putNumber("rotation", odometry.getPoseMeters().getRotation().getDegrees());
+        SmartDashboard.putNumber("encoderLeft", leftEncoder.getPosition());
+        SmartDashboard.putNumber("encoderRight", rightEncoder.getPosition());
     }
 
     // Returns the pose of the robot.
@@ -96,7 +111,7 @@ public class Drivetrain extends SubsystemBase {
 
     // Returns the current speed of the wheels of the robot.
     public DifferentialDriveWheelSpeeds getWheelSpeeds() {
-        return new DifferentialDriveWheelSpeeds(leftEncoder.getVelocity(), -rightEncoder.getVelocity());
+        return new DifferentialDriveWheelSpeeds(leftEncoder.getEncoder().getVelocity(), -rightEncoder.getEncoder().getVelocity());
     }
 
     // Resets the odometry, both rotation and distance traveled.
@@ -113,7 +128,7 @@ public class Drivetrain extends SubsystemBase {
 
     // Drives the robot with arcade controls.
     public void arcadeDrive(double throttle, double turn) {
-        difDrive.curvatureDrive(throttleFilter.calculate(throttle), turnFilter.calculate(turn*0.6), throttle < 0.05);
+        difDrive.curvatureDrive(throttleFilter.calculate(throttle*Constants.Drivetrain.kThrottleMultiplier), turnFilter.calculate(turn*Constants.Drivetrain.kTurnMultiplier), throttle < 0.05);
         // if (throttle == 0 && turn == 0) {
         //     tankDriveVolts(0, 0);
         // }
@@ -140,12 +155,12 @@ public class Drivetrain extends SubsystemBase {
 
     // Returns the left encoders.
     public RelativeEncoder getLeftEncoder() {
-        return leftEncoder;
+        return leftEncoder.getEncoder();
     }
 
     // Returns the right encoders.
     public RelativeEncoder getRightEncoder() {
-        return rightEncoder;
+        return rightEncoder.getEncoder();
     }
 
     // Sets the max output of the drive. Used for scaling the drive to drive more slowly.
@@ -174,5 +189,9 @@ public class Drivetrain extends SubsystemBase {
     // Returns the rate at which the robot is turning in degrees per second.
     public double getTurnRate() {
         return -gyro.getRate();
+    }
+
+    public Field2d getField() {
+        return this.m_field; 
     }
 }
